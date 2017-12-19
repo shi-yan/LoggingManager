@@ -22,7 +22,7 @@
 
 class LogEndpoint
 {
-protected:
+public:
     QFile m_logFile;
     QTextStream m_logStream;
     QDebug m_debug;
@@ -222,42 +222,25 @@ public:
     }
 };
 
-template <typename EndpointType = LogEndpoint>
 class LoggingManager
 {
-    QThreadStorage<EndpointType*> m_logEndpoint;
+    QThreadStorage<LogEndpoint*> m_logEndpoint;
     QString m_logFoldername;
     QDir m_logDir;
     static QMutex m_initMutex;
 
-    LoggingManager()
-        :m_logFoldername(QCoreApplication::applicationName().replace(' ','_') % QDateTime::currentDateTime().toString("/yyyy/MM/dd/") %
-                         QString::number( QCoreApplication::applicationPid()))
-    {
-        qDebug() << "Log file location:" << m_logFoldername;
-        m_logDir = QDir::home();
-        QString logPath = "." % QCoreApplication::applicationName().replace(' ','_') % "/" % m_logFoldername;
-        if (m_logDir.mkpath(logPath))
-        {
-            m_logDir.cd(logPath);
-        }
-        else
-        {
-            qDebug() << "can't create log folder";
-            m_logDir = QDir::temp();
-        }
-    }
+    LoggingManager();
 
 public:
-    static LoggingManager<EndpointType> & getSingleton()
+    static LoggingManager & getSingleton()
     {
-        LoggingManager<EndpointType>::m_initMutex.lock();
-        static LoggingManager<EndpointType> obj;
-        LoggingManager<EndpointType>::m_initMutex.unlock();
+        LoggingManager::m_initMutex.lock();
+        static LoggingManager obj;
+        LoggingManager::m_initMutex.unlock();
         return obj;
     }
 
-    inline EndpointType & log(LogEndpoint::LogLevel level = LogEndpoint::LogLevel::INFO)
+    inline LogEndpoint & log(LogEndpoint::LogLevel level = LogEndpoint::LogLevel::INFO)
     {
         if (m_logEndpoint.hasLocalData())
         {
@@ -268,7 +251,7 @@ public:
             QString logFilename = QCoreApplication::applicationName().replace(' ','_') % "_" %
                     QString::number( QCoreApplication::applicationPid()) % "_"
                     % QString::number(reinterpret_cast<quint64>(QThread::currentThreadId()), 16) % ".log";
-            EndpointType *endpoint = new EndpointType(m_logDir.absoluteFilePath(logFilename));
+            LogEndpoint *endpoint = new LogEndpoint(m_logDir.absoluteFilePath(logFilename));
             m_logEndpoint.setLocalData(endpoint);
             return (*m_logEndpoint.localData()).header(level, false);
         }
@@ -281,23 +264,16 @@ public:
             m_logEndpoint.localData()->flush();
         }
     }
-
-
 };
 
-template<typename EndpointType>
-QMutex LoggingManager<EndpointType>::m_initMutex;
-
-template<typename EndpointType = LogEndpoint>
-inline EndpointType & sLog(LogEndpoint::LogLevel level = LogEndpoint::LogLevel::INFO)
+inline LogEndpoint & sLog(LogEndpoint::LogLevel level = LogEndpoint::LogLevel::INFO)
 {
-    return LoggingManager<EndpointType>::getSingleton().log(level);
+    return LoggingManager::getSingleton().log(level);
 }
 
-template<typename EndpointType = LogEndpoint>
 inline void sLogFlush()
 {
-    LoggingManager<EndpointType>::getSingleton().flush();
+    LoggingManager::getSingleton().flush();
 }
 
 

@@ -11,38 +11,26 @@ public:
     QString version;
 };
 
-class CustomLogEndpoint : public LogEndpoint
+inline LogEndpoint &operator<<(LogEndpoint &e, CustomType & t)
 {
-public:
+    e.m_logStream << t.name << t.version;
+    e.m_debug << t.name << t.version;
+    return e.space();
+}
 
-    CustomLogEndpoint(const QString &filename):LogEndpoint(filename)
-    {}
 
-    inline LogEndpoint &operator<<(CustomType & t)
-    {
-        m_logStream << t.name << t.version;
-        m_debug << t.name << t.version;
-        return space();
-    }
-};
-
-template<typename EndpointType = LogEndpoint>
 class LogThread : public QThread
 {
     void run()
     {
         for(int i = 0;i<100;++i)
         {
-            sLog<EndpointType>() << "haha";
+            sLog() << "haha";
 
-            if constexpr (std::is_same<EndpointType, CustomLogEndpoint>())
-            {
-                CustomType ct;
-                ct.name = "name";
-                ct.version = "version";
-                sLog<EndpointType>() << ct;
-            }
-
+            CustomType ct;
+            ct.name = "name";
+            ct.version = "version";
+            sLog() << ct;
         }
     }
 };
@@ -55,14 +43,11 @@ int main(int argc, char *argv[])
     qApp->setApplicationVersion("1.0");
     qApp->setOrganizationName("HAHA");
 
-    CustomLogEndpoint ce("test.f");
-    ce << "af";
-
-    QVector<LogThread<LogEndpoint>*> threadPool;
+    QVector<LogThread*> threadPool;
 
     for(int i =0;i<10;++i)
     {
-        LogThread<LogEndpoint> *thread = new LogThread<LogEndpoint>();
+        LogThread *thread = new LogThread();
         thread->start();
         threadPool.push_back(thread);
     }
@@ -77,22 +62,6 @@ int main(int argc, char *argv[])
 
     qDebug() << "done logging";
 
-    QVector<LogThread<CustomLogEndpoint>*> customLogThreadPool;
-
-    for(int i = 0;i<10;++i)
-    {
-        LogThread<CustomLogEndpoint> *thread = new LogThread<CustomLogEndpoint>();
-        thread->start();
-        customLogThreadPool.push_back(thread);
-    }
-
-    qDebug() << "done spawning custom logging thread";
-
-    for(int i =0;i<customLogThreadPool.size();++i)
-    {
-        customLogThreadPool[i]->wait();
-        customLogThreadPool[i]->deleteLater();
-    }
 
 
     return a.exec();
