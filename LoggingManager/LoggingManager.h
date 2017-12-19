@@ -14,12 +14,6 @@
 #include <QMutex>
 #include <QDebug>
 
-#define PRINT_TYPE(type) \
-    case type: \
-        m_logStream << #type; \
-        m_debug << #type; \
-    break;
-
 class LogEndpoint
 {
 public:
